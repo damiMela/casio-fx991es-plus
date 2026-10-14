@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.0.0 (creates tag v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Resolve version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            VER="${INPUT_VERSION#v}"
+          else
+            VER="${GITHUB_REF_NAME#v}"
+          fi
+          if [[ ! "$VER" =~ ^[0-9A-Za-z._-]+$ ]]; then echo "Invalid version: $VER"; exit 1; fi
+          echo "VERSION_NAME=$VER" >> "$GITHUB_ENV"
+          echo "TAG=v$VER" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+      - name: Make scripts executable
+        run: chmod +x gradlew .github/scripts/prepare-signing.sh
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: Prepare signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: .github/scripts/prepare-signing.sh
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease --stacktrace
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK="fx991-calc-${VERSION_NAME}.apk"
+          cp app/build/outputs/apk/release/*.apk "$APK"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            # Creates the tag on the current commit when started via workflow_dispatch.
+            gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+          fi
