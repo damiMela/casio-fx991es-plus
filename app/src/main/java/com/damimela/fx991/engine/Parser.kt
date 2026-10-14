@@ -11,12 +11,13 @@ object Names {
         "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
         "log", "ln", "√", "∛", "root", "Abs", "Int", "Intg", "Rnd", "GCD", "LCM", "Pol", "Rec", "RanInt#",
         "∫", "d/dx", "Σ", "Conjg", "Arg", "ReP", "ImP", "Det", "Trn", "Ide", "Dot", "Angle", "UnitV",
-        "Not", "Neg", "CONST", "CONV", "Sign"
+        "Not", "Neg", "CONST", "CONV", "RanMat", "@P", "@Q", "@R", "@t", "@xhat", "@yhat"
     )
     val ATOMS = setOf(
         "π", "e", "i", "Ans", "PreAns", "Ran#", "MatA", "MatB", "MatC", "MatAns", "VctA", "VctB", "VctC", "VctAns",
         "A", "B", "C", "D", "E", "F", "X", "Y", "M"
-    )
+    ) + StatVars.TABLE.map { it.first }
+    val STORABLE = setOf("A", "B", "C", "D", "E", "F", "X", "Y", "M")
     val INFIX = setOf("nPr", "nCr", "and", "or", "xor", "xnor")
     val ALL = (FUNCS + ATOMS + INFIX).sortedByDescending { it.length }
     val OUTS = listOf("▶DMS", "▶r∠θ", "▶a+bi", "▶DEC", "▶HEX", "▶BIN", "▶OCT")
@@ -50,7 +51,7 @@ class Lexer(private val src: String, private val base: Int = 10) {
                 c == '÷' || c == '/' -> { out += Tok(TokType.OP, "÷", i); i++ }
                 c == '^' -> { out += Tok(TokType.OP, "^", i); i++ }
                 c == '∠' -> { out += Tok(TokType.OP, "∠", i); i++ }
-                c == '²' || c == '³' || c == '!' || c == '%' || c == '°' || c == '′' || c == '″' ->
+                c == '²' || c == '³' || c == 'ʳ' || c == 'ᵍ' || c == '!' || c == '%' || c == '°' || c == '′' || c == '″' ->
                     { out += Tok(TokType.POST, c.toString(), i); i++ }
                 c == '⁻' && i + 1 < src.length && src[i + 1] == '¹' -> { out += Tok(TokType.POST, "⁻¹", i); i += 2 }
                 c == '→' -> { out += Tok(TokType.STO, "→", i); i++ }
@@ -141,7 +142,7 @@ class Parser(private val toks: List<Tok>) {
         if (cur.type == TokType.STO) {
             i++
             val t = cur
-            if (t.type != TokType.NAME || t.text !in Names.ATOMS || t.text in setOf("π", "e", "i", "Ans", "PreAns", "Ran#")) {
+            if (t.type != TokType.NAME || t.text !in Names.STORABLE) {
                 throw CalcError(ErrorKind.SYNTAX, t.pos)
             }
             store = t.text; i++

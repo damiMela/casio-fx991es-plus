@@ -27,7 +27,12 @@ data class C(val re: Double, val im: Double = 0.0) {
     operator fun unaryMinus() = C(-re, -im)
     fun abs() = hypot(re, im)
     fun arg() = atan2(im, re)
-    fun toValue(): Value = cplx(round15(re), round15(im))
+    fun toValue(): Value {
+        val m = max(abs(re), abs(im))
+        val r = if (abs(re) <= 1e-14 * m) 0.0 else re
+        val i = if (abs(im) <= 1e-14 * m) 0.0 else im
+        return cplx(round15(r), round15(i))
+    }
 
     companion object {
         val I = C(0.0, 1.0)
@@ -79,6 +84,18 @@ object Angles {
         AngleUnit.DEG -> deg
         AngleUnit.RAD -> deg * Real.of(Ex.pi(Frac.of(1, 180)))
         AngleUnit.GRA -> deg * Real.of(Frac.of(10, 9))
+    }
+
+    fun fromRadians(x: Real, u: AngleUnit): Real = when (u) {
+        AngleUnit.RAD -> x
+        AngleUnit.DEG -> x * Real.of(Frac.of(180)) / Real.PI
+        AngleUnit.GRA -> x * Real.of(Frac.of(200)) / Real.PI
+    }
+
+    fun fromGradians(x: Real, u: AngleUnit): Real = when (u) {
+        AngleUnit.GRA -> x
+        AngleUnit.DEG -> x * Real.of(Frac.of(9, 10))
+        AngleUnit.RAD -> x * Real.of(Ex.pi(Frac.of(1, 200)))
     }
 
     fun toDegrees(x: Real, u: AngleUnit): Real = when (u) {

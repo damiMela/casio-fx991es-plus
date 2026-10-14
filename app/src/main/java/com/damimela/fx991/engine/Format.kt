@@ -56,11 +56,12 @@ object Formatter {
      * [eng] shifts the engineering exponent (0 = plain ENG notation, null = not in ENG mode);
      * [polar] overrides the complex display style.
      */
-    fun format(v: Value, s: DisplaySettings, exact: Boolean = s.mathIO, eng: Int? = null, polar: Boolean? = null): MNode = when (v) {
+    fun format(v: Value, s: DisplaySettings, exact: Boolean = s.mathIO, eng: Int? = null, polar: Boolean? = null,
+               angle: AngleUnit = AngleUnit.DEG): MNode = when (v) {
         is Real -> real(v, s, exact, eng)
-        is Cplx -> complex(v, s, exact, eng, polar ?: s.polarComplex)
-        is MatV -> MMat((0 until v.rows).map { r -> (0 until v.cols).map { c -> format(v[r, c], s, exact, eng, polar) } })
-        is VecV -> MMat(listOf(v.items.map { format(it, s, exact, eng, polar) }))
+        is Cplx -> complex(v, s, exact, eng, polar ?: s.polarComplex, angle)
+        is MatV -> MMat((0 until v.rows).map { r -> (0 until v.cols).map { c -> format(v[r, c], s, exact, eng, polar, angle) } })
+        is VecV -> MMat(listOf(v.items.map { format(it, s, exact, eng, polar, angle) }))
     }
 
     fun text(v: Value, s: DisplaySettings, exact: Boolean = s.mathIO): String = plain(format(v, s, exact))
@@ -70,10 +71,10 @@ object Formatter {
         return decimal(r.d, s, eng)
     }
 
-    private fun complex(z: Cplx, s: DisplaySettings, exact: Boolean, eng: Int?, polar: Boolean): MNode {
+    private fun complex(z: Cplx, s: DisplaySettings, exact: Boolean, eng: Int?, polar: Boolean, angle: AngleUnit): MNode {
         if (polar) {
             val mag = Ops.abs(z)
-            val arg = Math.atan2(z.im.d, z.re.d)
+            val arg = Angles.fromRad(Math.atan2(z.im.d, z.re.d), angle)
             return mrow(real(mag, s, exact, eng), MText("∠"), decimal(round15(arg), s, eng))
         }
         val items = ArrayList<MNode>()
@@ -82,7 +83,7 @@ object Formatter {
         val neg = z.im.d < 0
         val mag = z.im.abs()
         if (reZero) { if (neg) items += MText("-") } else items += MText(if (neg) " - " else " + ")
-        if (!(mag.q == Frac.ONE)) items += real(mag, s, exact, eng)
+        if (mag.d != 1.0) items += real(mag, s, exact, eng)
         items += MText("i")
         return MRow(items)
     }

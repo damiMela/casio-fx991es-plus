@@ -216,3 +216,39 @@ object Engine {
         } finally { if (saved == null) ctx.vars.remove("X") else ctx.vars["X"] = saved }
     }
 }
+
+/** Internal atom names for statistical variables and the label they carry in [StatResult.values]. */
+object StatVars {
+    val TABLE = listOf(
+        "@n" to "n", "@xbar" to "x̄", "@sumx" to "Σx", "@sumx2" to "Σx²", "@sigx" to "σx", "@sx" to "sx",
+        "@minx" to "minX", "@maxx" to "maxX", "@q1" to "Q1", "@med" to "Med", "@q3" to "Q3",
+        "@ybar" to "ȳ", "@sumy" to "Σy", "@sumy2" to "Σy²", "@sumxy" to "Σxy", "@sigy" to "σy", "@sy" to "sy",
+        "@miny" to "minY", "@maxy" to "maxY", "@a" to "a", "@b" to "b", "@c" to "c", "@r" to "r"
+    )
+}
+
+/** Normal distribution helpers (CASIO STAT Distr menu). */
+object Distr {
+    /** erf via the all-positive-terms series, accurate to ~1e-15 for |x| < 6. */
+    private fun erf(x: Double): Double {
+        val ax = abs(x)
+        if (ax > 6.0) return if (x < 0) -1.0 else 1.0
+        var term = ax
+        var sum = ax
+        var n = 0
+        while (term > 1e-18 * sum && n < 500) {
+            n++
+            term *= 2 * ax * ax / (2 * n + 1)
+            sum += term
+        }
+        val r = 2 / sqrt(Math.PI) * exp(-ax * ax) * sum
+        return if (x < 0) -r else r
+    }
+
+    /** Area from 0 to t. */
+    fun q(t: Double) = erf(t / sqrt(2.0)) / 2
+    /** Left tail up to t. */
+    fun p(t: Double) = 0.5 + q(t)
+    /** Right tail from t. */
+    fun r(t: Double) = 0.5 - q(t)
+}

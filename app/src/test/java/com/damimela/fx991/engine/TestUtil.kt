@@ -9,7 +9,7 @@ fun newCtx(angle: AngleUnit = AngleUnit.DEG, complex: Boolean = false) = Context
 
 /** Evaluates [src] and formats the result as plain text (natural display flattened). */
 fun calc(src: String, ctx: Context = newCtx(), settings: DisplaySettings = DEFAULT_SETTINGS, exact: Boolean = true): String =
-    Formatter.text(Engine.evaluate(src, ctx).value, settings, exact)
+    Formatter.plain(Formatter.format(Engine.evaluate(src, ctx).value, settings, exact, angle = ctx.angle))
 
 fun dec(src: String, ctx: Context = newCtx()): String = calc(src, ctx, exact = false)
 

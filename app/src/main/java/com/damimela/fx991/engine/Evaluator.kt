@@ -15,6 +15,7 @@ class Context {
     val mats = HashMap<String, MatV>()
     val vecs = HashMap<String, VecV>()
     var random = Random()
+    var stat: StatResult? = null
     /** Rounding used by Rnd( (matches the display digits). */
     var rnd: (Double) -> Double = { x -> if (x == 0.0) 0.0 else java.math.BigDecimal(x).round(java.math.MathContext(10)).toDouble() }
 
@@ -65,7 +66,9 @@ class Evaluator(private val ctx: Context) {
         "Ran#" -> Real.of(floor(ctx.random.nextDouble() * 1000) / 1000.0)
         "MatA", "MatB", "MatC", "MatAns" -> ctx.mats[n.name] ?: throw CalcError(ErrorKind.MATH)
         "VctA", "VctB", "VctC", "VctAns" -> ctx.vecs[n.name] ?: throw CalcError(ErrorKind.MATH)
-        else -> ctx.variable(n.name)
+        else -> StatVars.TABLE.firstOrNull { it.first == n.name }?.let { (_, key) ->
+            Real.of(ctx.stat?.values?.get(key)?.takeIf { v -> !v.isNaN() } ?: throw CalcError(ErrorKind.MATH))
+        } ?: ctx.variable(n.name)
     }
 
     // ---- BASE-N -------------------------------------------------------------------------------
@@ -133,6 +136,8 @@ class Evaluator(private val ctx: Context) {
             "!" -> Num.factorial(x)
             "%" -> Ops.div(x, Real.of(100))
             "°" -> Angles.fromDegrees(real(x), ctx.angle)
+            "ʳ" -> Angles.fromRadians(real(x), ctx.angle)
+            "ᵍ" -> Angles.fromGradians(real(x), ctx.angle)
             "′" -> Angles.fromDegrees(real(x) / Real.of(60), ctx.angle)
             "″" -> Angles.fromDegrees(real(x) / Real.of(3600), ctx.angle)
             "conv" -> Constants.convert(n.arg, x)
@@ -228,6 +233,27 @@ class Evaluator(private val ctx: Context) {
                 ctx.vars["X"] = x; ctx.vars["Y"] = y
                 extras = listOf("x" to x, "y" to y)
                 x
+            }
+            "RanMat" -> {
+                val (r, c) = two()
+                val rr = Num.intValue(r, 4); val cc = Num.intValue(c, 4)
+                if (rr < 1 || cc < 1) throw CalcError(ErrorKind.ARGUMENT)
+                MatV.build(rr.toInt(), cc.toInt()) { _, _ -> Real.of(floor(ctx.random.nextDouble() * 1000) / 1000.0) }
+            }
+            "@P" -> Real.of(round15(Distr.p(real(one()).d)))
+            "@Q" -> Real.of(round15(Distr.q(real(one()).d)))
+            "@R" -> Real.of(round15(Distr.r(real(one()).d)))
+            "@t" -> {
+                val st = ctx.stat ?: throw CalcError(ErrorKind.MATH)
+                Real.of(round15((real(one()).d - st["x̄"]) / st["σx"]))
+            }
+            "@xhat" -> {
+                val st = ctx.stat ?: throw CalcError(ErrorKind.MATH)
+                Real.of(round15(st.predictX(real(one()).d).first()))
+            }
+            "@yhat" -> {
+                val st = ctx.stat ?: throw CalcError(ErrorKind.MATH)
+                Real.of(round15(st.predictY(real(one()).d)))
             }
             "Conjg" -> Ops.conj(one())
             "Arg" -> { val z = one(); if (!cx) throw CalcError(ErrorKind.SYNTAX); r15(Angles.fromRad(atan2(z.im().d, z.re().d), u)) }
