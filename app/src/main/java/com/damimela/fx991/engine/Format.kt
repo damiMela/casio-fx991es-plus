@@ -25,9 +25,13 @@ class MText(val s: String) : MNode()
 class MRow(val items: List<MNode>) : MNode()
 class MFrac(val num: MNode, val den: MNode) : MNode()
 class MSqrt(val inner: MNode, val index: MNode? = null) : MNode()
-class MSup(val base: MNode, val exp: MNode) : MNode()
+class MSup(val base: MNode, val exp: MNode, val down: Boolean = false) : MNode()
 class MMat(val cells: List<List<MNode>>) : MNode()
 class MMixed(val whole: MNode, val num: MNode, val den: MNode) : MNode()
+/** Input-line cursor marker (insert = vertical bar, overwrite = block). */
+class MCursor(val insert: Boolean = true) : MNode()
+/** Empty template slot shown as a small box. */
+object MPlace : MNode()
 
 fun mrow(vararg n: MNode): MNode = MRow(n.toList())
 
@@ -48,6 +52,8 @@ object Formatter {
         is MSqrt -> if (n.index == null) "√(${plain(n.inner)})" else "${plain(n.index)}ˣ√(${plain(n.inner)})"
         is MSup -> plain(n.base) + plain(n.exp).map { SUPERSCRIPT[it] ?: it }.joinToString("")
         is MMixed -> "${plain(n.whole)}⌟${plain(n.num)}⌟${plain(n.den)}"
+        is MCursor -> ""
+        is MPlace -> "□"
         is MMat -> "[" + n.cells.joinToString(";") { r -> r.joinToString(" ") { plain(it) } } + "]"
     }
 

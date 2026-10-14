@@ -43,3 +43,13 @@ class ExtrasTest {
         assertEquals(3, v.cols)
     }
 }
+
+class BaseAnsTest {
+    @Test
+    fun ansInHex() {
+        val ctx = newCtx().also { it.baseMode = 16 }
+        Engine.evaluate("1A", ctx)
+        assertEquals(26.0, num("Ans", ctx), 0.0)
+        assertEquals(29.0, num("Ans+3", ctx), 0.0)
+    }
+}

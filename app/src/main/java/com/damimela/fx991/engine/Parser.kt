@@ -34,7 +34,7 @@ class Lexer(private val src: String, private val base: Int = 10) {
             when {
                 c == ' ' -> i++
                 c.isDigit() && base == 10 || c == '.' && base == 10 || c == 'ᴇ' && base == 10 -> i = number(i, out)
-                base != 10 && digitVal(c) in 0 until base -> {
+                base != 10 && digitVal(c) in 0 until base && !src.startsWith("Ans", i) -> {
                     var j = i
                     while (j < src.length && digitVal(src[j]).let { it in 0 until base }) j++
                     val v = src.substring(i, j).toLong(base)
